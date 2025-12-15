@@ -36,9 +36,12 @@
         "framework",
         "seo",
         "server-first",
-        "react"
+        "react",
+        "kilatjs",
+        "html-first",
+        "bun-native"
     ],
-    "author": "",
+    "author": "KilatJS Team",
     "license": "MIT",
     "dependencies": {
         "react": "^18.2.0",
@@ -58,10 +61,10 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/your-username/kilatjs.git"
+        "url": "git+https://github.com/Haslab-dev/KilatJS.git"
     },
     "bugs": {
-        "url": "https://github.com/your-username/kilatjs/issues"
+        "url": "https://github.com/Haslab-dev/KilatJS/issues"
     },
-    "homepage": "https://github.com/your-username/kilatjs#readme"
+    "homepage": "https://github.com/Haslab-dev/KilatJS#readme"
 }

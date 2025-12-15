@@ -1,0 +1,29 @@
+# Source files
+src/
+example/
+test-imports.ts
+
+# Development files
+.vscode/
+.git/
+node_modules/
+bun.lock
+*.log
+
+# Build files
+tsconfig.json
+tailwind.config.js
+postcss.config.js
+
+# Documentation (keep README.md and LICENSE)
+benchmark-history.md
+install.sh
+
+# IDE files
+.DS_Store
+*.swp
+*.swo
+
+# Test files
+*.test.ts
+*.spec.ts
