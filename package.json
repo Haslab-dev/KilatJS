@@ -1,0 +1,67 @@
+{
+    "name": "kilatjs",
+    "version": "0.1.0",
+    "description": "A Bun-native, HTML-first framework that renders real pages, treats UI frameworks as renderers, and makes SEO the default.",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "module": "dist/index.js",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist/**/*",
+        "README.md",
+        "LICENSE"
+    ],
+    "scripts": {
+        "build": "bun run build:lib && bun run build:types",
+        "build:lib": "bun build ./src/index.ts --outdir ./dist --external react --external react-dom --external fs --external path --external bun",
+        "build:types": "tsc --declaration --emitDeclarationOnly --outDir ./dist",
+        "build:example": "cd example && bun run ../src/cli.ts build",
+        "start": "cd example && bun run ../src/cli.ts dev --production",
+        "dev": "cd example && bun --watch run ../src/cli.ts dev",
+        "test": "bun test",
+        "typecheck": "tsc --noEmit",
+        "prepublishOnly": "bun run build"
+    },
+    "keywords": [
+        "bun",
+        "html",
+        "ssr",
+        "static",
+        "framework",
+        "seo",
+        "server-first",
+        "react"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0"
+    },
+    "devDependencies": {
+        "@types/react": "^18.2.0",
+        "@types/react-dom": "^18.2.0",
+        "autoprefixer": "^10.4.22",
+        "bun-types": "latest",
+        "postcss": "^8.5.6",
+        "tailwindcss": "^4.1.18",
+        "typescript": "^5.0.0"
+    },
+    "engines": {
+        "bun": ">=1.0.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/your-username/kilatjs.git"
+    },
+    "bugs": {
+        "url": "https://github.com/your-username/kilatjs/issues"
+    },
+    "homepage": "https://github.com/your-username/kilatjs#readme"
+}

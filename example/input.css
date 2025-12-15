@@ -1,0 +1,68 @@
+@import "tailwindcss";
+@source "./src/**/*.{html,js,ts,jsx,tsx}";
+
+/* ===== Custom Theme Variables ===== */
+@theme {
+    /* Primary Colors - Deep Purple Gradient Theme */
+    --color-primary-50: #f5f3ff;
+    --color-primary-100: #ede9fe;
+    --color-primary-200: #ddd6fe;
+    --color-primary-300: #c4b5fd;
+    --color-primary-400: #a78bfa;
+    --color-primary-500: #8b5cf6;
+    --color-primary-600: #7c3aed;
+    --color-primary-700: #6d28d9;
+    --color-primary-800: #5b21b6;
+    --color-primary-900: #4c1d95;
+
+    /* Accent Colors - Coral/Orange */
+    --color-accent-400: #fb923c;
+    --color-accent-500: #f97316;
+    --color-accent-600: #ea580c;
+
+    /* Custom Animations */
+    --animate-blink: blink 2s ease-in-out infinite;
+
+    /* Custom Fonts */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+}
+
+@keyframes hero-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.5;
+    }
+
+    50% {
+        transform: scale(1.1);
+        opacity: 0.3;
+    }
+}
+
+/* ===== Base Layer ===== */
+@layer base {
+    html {
+        @apply scroll-smooth antialiased;
+    }
+
+    body {
+        @apply font-sans text-base leading-relaxed text-neutral-900;
+        background: linear-gradient(135deg, #fafafa 0%, #f5f3ff 100%);
+        min-height: 100vh;
+    }
+}
