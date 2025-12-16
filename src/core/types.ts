@@ -46,6 +46,8 @@ export interface RouteExports {
     load?: (ctx: RouteContext) => Promise<any> | any;
     meta?: RouteMeta;
     getStaticPaths?: () => Promise<string[]> | string[];
+    /** Client-side script function - auto-injected into page, runs in browser */
+    clientScript?: () => void;
     POST?: (ctx: RouteContext) => Promise<Response> | Response;
     PUT?: (ctx: RouteContext) => Promise<Response> | Response;
     DELETE?: (ctx: RouteContext) => Promise<Response> | Response;
@@ -74,7 +76,8 @@ export interface TailwindConfig {
 }
 
 export interface KilatConfig {
-    routesDir: string;
+    /** App source directory (e.g., "./src"). Auto-detects routes/ or pages/ inside */
+    appDir: string;
     outDir: string;
     port?: number;
     hostname?: string;

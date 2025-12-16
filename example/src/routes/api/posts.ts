@@ -1,10 +1,10 @@
-import { RouteContext } from "../../../../src/core/types";
+import { RouteContext } from "kilatjs";
 
 // In-memory posts storage for demo
 const posts: Post[] = [
     {
         id: "1",
-        title: "Getting Started with KilatJS",
+        title: "Getting Started with KilatJS HHAA",
         slug: "getting-started-with-kilatjs",
         content: "KilatJS is a Bun-native, HTML-first framework that makes building fast, SEO-friendly websites a breeze...",
         excerpt: "Learn how to build your first KilatJS application from scratch.",
@@ -28,7 +28,7 @@ const posts: Post[] = [
     },
     {
         id: "3",
-        title: "HTMX Integration Guide",
+        title: "HTMX Integration Guide haha",
         slug: "htmx-integration-guide",
         content: "HTMX allows you to access modern browser features directly from HTML...",
         excerpt: "A comprehensive guide to integrating HTMX with KilatJS for hypermedia-driven apps.",

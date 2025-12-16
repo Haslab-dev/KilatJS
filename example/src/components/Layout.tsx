@@ -8,8 +8,9 @@ interface LayoutProps {
 export function Layout({ children, currentPath = "/" }: LayoutProps) {
     const navLinks = [
         { href: "/", label: "Home" },
-        { href: "/posts", label: "Posts" },
-        { href: "/users", label: "Users" },
+        { href: "/examples/alpine", label: "Alpine.js" },
+        { href: "/examples/htmx", label: "HTMX" },
+        { href: "/examples/vanilla", label: "Vanilla JS" },
         { href: "/about", label: "About" },
         { href: "/contact", label: "Contact" },
     ];
@@ -41,6 +42,11 @@ export function Layout({ children, currentPath = "/" }: LayoutProps) {
             <main className="flex-1 py-12">
                 {children}
             </main>
+
+            {/* Alpine.js */}
+            <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+            {/* HTMX */}
+            <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 
             <footer className="bg-neutral-900 text-neutral-300 py-12 mt-auto">
                 <div className="max-w-7xl mx-auto px-6 w-full flex justify-between items-center flex-wrap gap-6 md:flex-col md:text-center">

@@ -1,4 +1,4 @@
-import { RouteContext } from "../../../../src/core/types";
+import { RouteContext } from "kilatjs";
 
 // In-memory user storage for demo
 const users: User[] = [

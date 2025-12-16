@@ -1,23 +1,31 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import React from "react";
 import { PageProps, RouteMeta, KilatConfig } from "../core/types";
+import { getLiveReloadScript } from "../server/live-reload";
 
 export class ReactAdapter {
+    /**
+     * Render React component to HTML string (pure static markup, no hydration)
+     */
     static async renderToString(
         component: React.ComponentType<PageProps>,
         props: PageProps
     ): Promise<string> {
         try {
             const element = React.createElement(component, props);
-            const html = renderToStaticMarkup(element);
-            return html;
+            return renderToStaticMarkup(element);
         } catch (error) {
             console.error("Error rendering React component:", error);
             throw error;
         }
     }
 
-    static createDocument(html: string, meta: RouteMeta = {}, config?: KilatConfig): string {
+    static createDocument(
+        html: string, 
+        meta: RouteMeta = {}, 
+        config?: KilatConfig,
+        options: { clientScript?: () => void } = {}
+    ): string {
         const title = meta.title || "KilatJS App";
         const description = meta.description || "";
         const robots = meta.robots || "index,follow";
@@ -77,6 +85,14 @@ export class ReactAdapter {
         metaTags += `<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />\n    `;
         metaTags += `<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />\n    `;
 
+        // Live reload script in dev mode
+        const liveReloadScript = config?.dev ? getLiveReloadScript() : "";
+
+        // Client script injection (auto-injected from export clientScript)
+        const clientScriptTag = options.clientScript 
+            ? `<script>(${options.clientScript.toString()})()</script>`
+            : "";
+
         return `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -87,38 +103,8 @@ export class ReactAdapter {
     <div id="root">
       ${html}
     </div>
-    ${
-        config?.dev
-            ? `<script>
-      (function() {
-        let currentServerId = null;
-        let isReconnecting = false;
-        
-        function connect() {
-            const source = new EventSource('/_kilat/live-reload');
-            
-            source.onmessage = (event) => {
-                const newServerId = event.data;
-                if (currentServerId === null) {
-                    currentServerId = newServerId;
-                } else if (currentServerId !== newServerId) {
-                    // Server ID changed, reload!
-                    location.reload();
-                }
-            };
-
-            source.onerror = () => {
-                source.close();
-                // Try to reconnect in 1s
-                setTimeout(connect, 1000);
-            };
-        }
-        
-        connect();
-      })();
-    </script>`
-            : ""
-    }
+    ${liveReloadScript}
+    ${clientScriptTag}
   </body>
 </html>`;
     }

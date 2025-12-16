@@ -1,4 +1,5 @@
 import { PageProps, RouteMeta, KilatConfig } from "../core/types";
+import { getLiveReloadScript } from "../server/live-reload";
 
 /**
  * HTMX Adapter - For building HTMX-enhanced HTML pages
@@ -200,6 +201,7 @@ export class HTMXAdapter {
     <div id="root">
       ${html}
     </div>
+    ${config?.dev ? getLiveReloadScript() : ""}
   </body>
 </html>`;
     }

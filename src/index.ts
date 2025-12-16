@@ -5,7 +5,7 @@ export { Router } from "./core/router";
 export { KilatServer } from "./server/server";
 export { ReactAdapter } from "./adapters/react";
 export { HTMXAdapter, type HTMXResponseOptions } from "./adapters/htmx";
-// Note: Additional adapters can be added in the adapters directory
+export { startLiveReload, stopLiveReload, notifyReload } from "./server/live-reload";
 export * from "./core/types";
 
 import { KilatServer } from "./server/server";
@@ -15,7 +15,7 @@ import { KilatConfig, TailwindConfig } from "./core/types";
  * Default configuration for KilatJS
  */
 export const defaultConfig: KilatConfig = {
-    routesDir: "./routes",
+    appDir: "./src",
     outDir: "./dist",
     port: 3000,
     hostname: "localhost",
@@ -81,7 +81,119 @@ export function defineMeta(meta: import("./core/types").RouteMeta) {
     return meta;
 }
 
-// Default export for import Kilat from 'kilatjs'
+/**
+ * CLI functionality - can be used programmatically
+ */
+export async function runCLI(args: string[] = process.argv.slice(2)) {
+    const command = args[0];
+    
+    if (!command) {
+        console.error("Please specify a command: dev or build");
+        process.exit(1);
+    }
+
+    // Helper to load config
+    async function loadConfig(): Promise<Partial<KilatConfig>> {
+        const configPath = `${process.cwd()}/kilat.config.ts`;
+        
+        const file = Bun.file(configPath);
+        if (!(await file.exists())) {
+            console.warn("⚠️ No kilat.config.ts found, using defaults");
+            return {};
+        }
+
+        try {
+            const configModule = await import(configPath);
+            return configModule.default || configModule;
+        } catch (error) {
+            console.error("Failed to load config:", error);
+            return {};
+        }
+    }
+
+    const config = await loadConfig();
+
+    switch (command) {
+        case "dev":
+            const isProduction = args.includes("--production");
+            // Silent start - server will print its own message
+            const devServer = createKilat({ ...config, dev: !isProduction });
+            await devServer.start();
+            break;
+            
+        case "build":
+            await buildStatic(config);
+            break;
+
+        case "serve":
+            // Run the production server from dist
+            const serveOutDir = config.outDir || "./dist";
+            const serverPath = `${process.cwd()}/${serveOutDir}/server.js`;
+            
+            const serverFile = Bun.file(serverPath);
+            if (!(await serverFile.exists())) {
+                console.error(`❌ Production server not found at ${serveOutDir}/server.js`);
+                console.error(`   Run 'kilat build' first to generate the production build.`);
+                process.exit(1);
+            }
+
+            // Run the production server
+            const serveProc = Bun.spawn(["bun", serverPath], {
+                stdio: ["inherit", "inherit", "inherit"],
+                cwd: process.cwd(),
+            });
+            
+            await serveProc.exited;
+            break;
+
+        case "preview":
+            const outDir = config.outDir || "./dist";
+            const port = config.port || 3000;
+            const hostname = config.hostname || "localhost";
+            const root = `${process.cwd()}/${outDir}`;
+
+            console.log(`\n🔍 Preview server running:`);
+            console.log(`   ➜ http://${hostname}:${port}`);
+            console.log(`   Serving: ${outDir}\n`);
+
+            Bun.serve({
+                port,
+                hostname,
+                async fetch(req) {
+                    const url = new URL(req.url);
+                    let path = url.pathname;
+                    
+                    const filePath = `${root}${path}`;
+                    let file = Bun.file(filePath);
+                    if (await file.exists()) {
+                         return new Response(file);
+                    }
+
+                    const indexHtml = `${filePath}/index.html`;
+                    file = Bun.file(indexHtml);
+                    if (await file.exists()) {
+                        return new Response(file);
+                    }
+
+                    const rootIndex = `${root}/index.html`;
+                    file = Bun.file(rootIndex);
+                    if (await file.exists()) {
+                        return new Response(file);
+                    }
+
+                    return new Response("404 Not Found", { status: 404 });
+                }
+            });
+            break;
+            
+        default:
+            console.error(`Unknown command: ${command}`);
+            console.log("Available commands: dev, build, serve, preview");
+            process.exit(1);
+    }
+}
+
+// Default export
 const Kilat = {
     createKilat,
     startDevServer,
@@ -89,6 +201,7 @@ const Kilat = {
     defineConfig,
     defineLoader,
     defineMeta,
+    runCLI,
     defaultConfig,
 };
 

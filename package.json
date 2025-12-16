@@ -1,10 +1,13 @@
 {
     "name": "kilatjs",
-    "version": "0.1.0",
+    "version": "0.1.2",
     "description": "A Bun-native, HTML-first framework that renders real pages, treats UI frameworks as renderers, and makes SEO the default.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "module": "dist/index.js",
+    "bin": {
+        "kilat": "./dist/cli.js"
+    },
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
@@ -19,11 +22,14 @@
     ],
     "scripts": {
         "build": "bun run build:lib && bun run build:types",
-        "build:lib": "bun build ./src/index.ts --outdir ./dist --external react --external react-dom --external fs --external path --external bun",
+        "build:lib": "bun build ./src/index.ts --outdir ./dist --external react --external react-dom --external fs --external path --external bun && bun build ./src/cli.ts --outdir ./dist --external react --external react-dom --external fs --external path --external bun",
         "build:types": "tsc --declaration --emitDeclarationOnly --outDir ./dist",
         "build:example": "cd example && bun run ../src/cli.ts build",
         "start": "cd example && bun run ../src/cli.ts dev --production",
-        "dev": "cd example && bun --watch run ../src/cli.ts dev",
+        "serve": "cd example && bun run ../src/cli.ts serve",
+        "dev": "cd example && bun run ../src/cli.ts dev",
+        "dev:watch": "bun --watch run build:lib",
+        "watch": "bun --watch run build:lib",
         "test": "bun test",
         "typecheck": "tsc --noEmit",
         "prepublishOnly": "bun run build"

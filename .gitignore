@@ -1,2 +1,6 @@
 node_modules
 dist
+bun.lock
+examples/bun.lock
+examples/node_modules
+examples/dist

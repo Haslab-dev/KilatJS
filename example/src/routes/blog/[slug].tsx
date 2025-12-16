@@ -1,6 +1,6 @@
 import React from "react";
 import { Layout } from "../../components/Layout";
-import { RouteContext } from "../../../../src/core/types";
+import { RouteContext } from "kilatjs";
 
 /**
  * Dynamic Route: /blog/[slug]

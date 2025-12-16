@@ -57,7 +57,7 @@ export default function HomePage({ data }: { data: any; params: any; state: any 
                         Server time: {data.serverTime}
                     </div>
                     <h1 className="text-5xl md:text-7xl font-extrabold leading-tight tracking-tight mb-6 bg-gradient-to-br from-[#18181b] via-[#6d28d9] to-[#f97316] bg-clip-text text-transparent">
-                        Build for the We haha cool,<br />
+                        Build for the cool,<br />
                         <span className="bg-gradient-to-br from-[#7c3aed] to-[#f97316] bg-clip-text text-transparent">Not Against It</span>
                     </h1>
                     <p className="text-lg md:text-xl text-neutral-600 max-w-2xl mx-auto mb-10 leading-relaxed">

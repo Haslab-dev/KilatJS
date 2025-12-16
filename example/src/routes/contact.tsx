@@ -1,6 +1,6 @@
 import React from "react";
 import { Layout } from "../components/Layout";
-import { RouteContext } from "../../../src/core/types";
+import { RouteContext } from "kilatjs";
 export const meta = {
     title: "Contact Us - KilatJS",
     description: "Get in touch with the KilatJS team. We'd love to hear from you!",

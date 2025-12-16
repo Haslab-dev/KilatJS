@@ -1,0 +1,23 @@
+{
+  "name": "kilatjs-example",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "kilat dev",
+    "build": "kilat build",
+    "serve": "kilat serve"
+  },
+  "dependencies": {
+    "kilatjs": "file:..",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "autoprefixer": "^10.4.22",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.0.0"
+  }
+}

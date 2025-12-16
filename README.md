@@ -14,191 +14,382 @@
 
 KilatJS is a server-first web framework inspired by the simplicity of PHP and the power of modern component libraries. It rejects the complexity of SPAs, hydration, and client-side routing in favor of **real HTML rendered on the server**.
 
-**🔥 Powered by Bun's Native APIs - No Abstractions, Pure Performance:**
-- 🚀 **Bun.FileSystemRouter** - Zero-config file-based routing at native speed
-- ⚡ **Bun.serve()** - HTTP/2 server with built-in WebSocket support
-- 🔧 **Bun.file()** - Streaming file operations with automatic MIME detection
-- 📦 **Bun.build()** - Native TypeScript/JSX bundling (no Webpack/Vite needed)
-- 🔄 **Bun.spawn()** - Process management for build tools and external commands
-- 💾 **Bun.write()** - Optimized file writing with atomic operations
-- 🔍 **Bun.glob()** - Pattern matching for static site generation
-
 ### One-Line Positioning
 
 > **"Request → Load → Render HTML → Response. That's it."**
 
 ---
 
-## 🔥 Why Bun Native?
+## � *Quick Start
 
-KilatJS leverages Bun's runtime directly instead of abstracting it away:
+### Installation
 
-```typescript
-// Direct Bun.FileSystemRouter usage
-const router = new Bun.FileSystemRouter({
-    style: "nextjs",
-    dir: "./routes"
-});
+```bash
+# Create a new project
+mkdir my-app && cd my-app
+bun init
 
-// Native Bun.serve() with streaming
-export default {
+# Install KilatJS
+bun add kilatjs react react-dom
+
+# Install dev dependencies
+bun add -d @types/react @types/react-dom typescript tailwindcss
+```
+
+### Create Your First App
+
+**1. Create config file `kilat.config.ts`:**
+
+```ts
+import { defineConfig } from "kilatjs";
+
+export default defineConfig({
+    appDir: "./src",
+    outDir: "./dist",
     port: 3000,
-    fetch: async (request) => {
-        // Zero-copy request handling
-        return new Response(Bun.file("./static/index.html"));
-    }
+    tailwind: {
+        enabled: true,
+        inputPath: "./input.css",
+        cssPath: "./styles.css",
+    },
+});
+```
+
+**2. Create input CSS `input.css`:**
+
+```css
+@import "tailwindcss";
+```
+
+**3. Create your first route `src/routes/index.tsx`:**
+
+```tsx
+export const meta = {
+    title: "Welcome to KilatJS",
+    description: "A Bun-native, HTML-first framework",
 };
 
-// Built-in TypeScript compilation
-const result = await Bun.build({
-    entrypoints: ["./src/index.tsx"],
-    outdir: "./dist",
-    target: "bun"
-});
+export async function load() {
+    return {
+        message: "Hello from the server!",
+        time: new Date().toLocaleTimeString(),
+    };
+}
+
+export default function HomePage({ data }) {
+    return (
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+            <div className="bg-white p-8 rounded-lg shadow-lg">
+                <h1 className="text-3xl font-bold text-gray-900">{data.message}</h1>
+                <p className="text-gray-600 mt-2">Server time: {data.time}</p>
+            </div>
+        </div>
+    );
+}
 ```
 
-**Performance Benefits:**
-- ⚡ **3x faster** cold starts vs Node.js frameworks
-- 🚀 **Native TypeScript** - no transpilation overhead
-- 💾 **Zero-copy streaming** for static files
-- 🔧 **Built-in bundling** eliminates build tool complexity
-
----
-
-## ✅ Core Principles
-
-1. **HTML is the protocol** — Every response is complete, semantic HTML
-2. **Server owns all truth** — No client-side state management nightmares
-3. **Every meaningful change = HTTP request** — Forms, mutations, navigation
-4. **UI frameworks render, never orchestrate** — React/Solid/Vue for templating only
-5. **JavaScript is optional, not required** — Sites work without JS
-
----
-
-## ❌ Strict Non-Goals
-
-KilatJS intentionally avoids:
-
-- ❌ Client-Side Rendering (CSR)
-- ❌ Hydration / Islands architecture
-- ❌ Client-side routing
-- ❌ Framework hooks (`useLoaderData`, `useRoute`, etc.)
-- ❌ Middleware chains
-- ❌ Dependency injection
-- ❌ SPA build assumptions
-- ❌ Vite as a hard dependency
-
----
-
-## 🚀 Quick Start
-
-### 1. Install dependencies
+**4. Run the dev server:**
 
 ```bash
-bun install
+bunx kilat dev
 ```
 
-### 2. Run the example
+Visit [http://localhost:3000](http://localhost:3000) 🎉
 
-```bash
-bun run dev
+---
+
+## 📖 CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `kilat dev` | Start development server with HMR + Live Reload |
+| `kilat build` | Build for production |
+| `kilat serve` | Run production server (`bun dist/server.js`) |
+| `kilat preview` | Preview static files |
+
+### Development Output
+
+```
+⚡ KilatJS Dev Server
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ➜ http://localhost:3000
+  ➜ HMR + Live Reload enabled
+  ➜ Edit files and see changes instantly
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-Visit [http://localhost:3000](http://localhost:3000) to see the example site.
+### Build Output
+
+```
+🔨 KilatJS Production Build
+
+🎨 Building Tailwind CSS...
+
+📄 Routes Analysis:
+─────────────────────────────────────────────────────────
+   📄 /                    SSR          index.tsx
+   📄 /about               SSR          about.tsx
+   ⚡ /api/posts           API          api/posts.ts
+   🔄 /blog/[slug]         Dynamic SSR  blog/[slug].tsx
+─────────────────────────────────────────────────────────
+   Total: 15 routes (10 SSR, 3 Dynamic, 2 API)
+
+✅ Build Complete!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Output: ./dist
+   Start: bun ./dist/server.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
 
 ---
 
 ## 📁 Project Structure
 
 ```
-kilatjs/
+my-app/
+├── kilat.config.ts        # Configuration
+├── input.css              # Tailwind input
+├── styles.css             # Generated CSS
 ├── src/
-│   ├── index.ts           # Main entry point
-│   ├── core/
-│   │   ├── router.ts      # File-based router
-│   │   └── types.ts       # TypeScript types
-│   ├── adapters/
-│   │   └── react.ts       # React SSR adapter
-│   └── server/
-│       └── server.ts      # Bun HTTP server
-├── example/
-│   ├── server.ts          # Example server entry
-│   ├── build.ts           # Static build script
-│   ├── styles.css         # CSS styles
-│   ├── components/
-│   │   └── Layout.tsx     # Shared layout
-│   └── routes/
-│       ├── index.tsx      # Home page
-│       ├── about.tsx      # About page
-│       ├── contact.tsx    # Contact form
-│       ├── contact/
-│       │   └── success.tsx
-│       └── blog/
-│           ├── index.tsx  # Blog listing
-│           └── [slug].tsx # Dynamic blog posts
-└── README.md
+│   ├── components/        # Shared components
+│   │   └── Layout.tsx
+│   └── routes/            # File-based routing
+│       ├── index.tsx      # → /
+│       ├── about.tsx      # → /about
+│       ├── blog/
+│       │   ├── index.tsx  # → /blog
+│       │   └── [slug].tsx # → /blog/:slug
+│       └── api/
+│           └── posts.ts   # → /api/posts
+└── dist/                  # Production build
 ```
 
 ---
 
 ## 📄 Route Contract
 
-Each route file may export **at most**:
+Each route file can export:
 
 ```tsx
-// Rendering mode: "static" (build-time) or "ssr" (request-time)
-export const mode = "ssr";
-
-// UI framework: "react" | "solid" | "vue" (default: react)
-export const ui = "react";
-
 // SEO meta tags
 export const meta = {
     title: "Page Title",
-    description: "Page description for SEO",
+    description: "Page description",
     robots: "index,follow",
     ogTitle: "Open Graph Title",
-    ogDescription: "Open Graph description",
-    ogImage: "https://example.com/image.jpg"
+    ogDescription: "OG description",
+    ogImage: "https://example.com/image.jpg",
 };
 
-// For static generation of dynamic routes
-export function getStaticPaths() {
-    return ["/blog/post-1", "/blog/post-2"];
-}
-
-// Server-only data loading
+// Server-side data loading
 export async function load(ctx) {
-    const data = await fetchFromDatabase();
-    return { posts: data };
+    const data = await fetchData();
+    return { items: data };
 }
 
-// HTTP action handlers
+// HTTP method handlers (POST, PUT, DELETE, etc.)
 export async function POST(ctx) {
     const formData = await ctx.request.formData();
     // Process form...
     return Response.redirect("/success", 302);
 }
 
-// Pure render function
+// Page component (receives data from load())
 export default function Page({ data, params, state }) {
-    return <div>{data.posts.map(p => <h2>{p.title}</h2>)}</div>;
+    return <div>{data.items.map(item => <p>{item.name}</p>)}</div>;
 }
 ```
 
 ---
 
-## 🔄 Actions (PRG Pattern)
+## 🔧 Tutorial: Building a Blog
 
-All meaningful state changes happen via HTTP requests:
+### Step 1: Create Layout Component
+
+**`src/components/Layout.tsx`:**
 
 ```tsx
-// routes/contact.tsx
+interface LayoutProps {
+    children: React.ReactNode;
+    title?: string;
+}
+
+export function Layout({ children, title = "My Blog" }: LayoutProps) {
+    return (
+        <div className="min-h-screen bg-gray-50">
+            <header className="bg-white shadow">
+                <nav className="max-w-4xl mx-auto px-4 py-4">
+                    <a href="/" className="text-xl font-bold">My Blog</a>
+                    <div className="float-right space-x-4">
+                        <a href="/" className="text-gray-600 hover:text-gray-900">Home</a>
+                        <a href="/blog" className="text-gray-600 hover:text-gray-900">Blog</a>
+                        <a href="/about" className="text-gray-600 hover:text-gray-900">About</a>
+                    </div>
+                </nav>
+            </header>
+            <main className="max-w-4xl mx-auto px-4 py-8">
+                {children}
+            </main>
+        </div>
+    );
+}
+```
+
+### Step 2: Create Blog List Page
+
+**`src/routes/blog/index.tsx`:**
+
+```tsx
+import { Layout } from "../../components/Layout";
+
+export const meta = {
+    title: "Blog - My Site",
+    description: "Read our latest articles",
+};
+
+export async function load() {
+    // In real app, fetch from database
+    const posts = [
+        { id: 1, slug: "hello-world", title: "Hello World", excerpt: "My first post..." },
+        { id: 2, slug: "getting-started", title: "Getting Started", excerpt: "Learn how to..." },
+    ];
+    return { posts };
+}
+
+export default function BlogPage({ data }) {
+    return (
+        <Layout>
+            <h1 className="text-3xl font-bold mb-8">Blog</h1>
+            <div className="space-y-6">
+                {data.posts.map(post => (
+                    <article key={post.id} className="bg-white p-6 rounded-lg shadow">
+                        <h2 className="text-xl font-semibold">
+                            <a href={`/blog/${post.slug}`} className="hover:text-blue-600">
+                                {post.title}
+                            </a>
+                        </h2>
+                        <p className="text-gray-600 mt-2">{post.excerpt}</p>
+                    </article>
+                ))}
+            </div>
+        </Layout>
+    );
+}
+```
+
+### Step 3: Create Dynamic Blog Post Page
+
+**`src/routes/blog/[slug].tsx`:**
+
+```tsx
+import { Layout } from "../../components/Layout";
+
+export const meta = {
+    title: "Blog Post",
+    description: "Read this article",
+};
+
+export async function load({ params }) {
+    // params.slug contains the URL parameter
+    const post = await getPostBySlug(params.slug);
+    
+    if (!post) {
+        throw new Response("Not Found", { status: 404 });
+    }
+    
+    return { post };
+}
+
+async function getPostBySlug(slug: string) {
+    // In real app, fetch from database
+    const posts = {
+        "hello-world": { title: "Hello World", content: "This is my first post!" },
+        "getting-started": { title: "Getting Started", content: "Let me show you how..." },
+    };
+    return posts[slug] || null;
+}
+
+export default function BlogPostPage({ data, params }) {
+    return (
+        <Layout>
+            <article>
+                <h1 className="text-4xl font-bold mb-4">{data.post.title}</h1>
+                <div className="prose max-w-none">
+                    {data.post.content}
+                </div>
+            </article>
+            <a href="/blog" className="text-blue-600 mt-8 inline-block">← Back to Blog</a>
+        </Layout>
+    );
+}
+```
+
+### Step 4: Create API Route
+
+**`src/routes/api/posts.ts`:**
+
+```ts
+import { RouteContext } from "kilatjs";
+
+const posts = [
+    { id: 1, title: "Hello World", slug: "hello-world" },
+    { id: 2, title: "Getting Started", slug: "getting-started" },
+];
+
+// GET /api/posts
+export async function GET(ctx: RouteContext) {
+    const search = ctx.query.get("search")?.toLowerCase();
+    
+    let results = posts;
+    if (search) {
+        results = posts.filter(p => p.title.toLowerCase().includes(search));
+    }
+    
+    return new Response(JSON.stringify({ data: results }), {
+        headers: { "Content-Type": "application/json" },
+    });
+}
+
+// POST /api/posts
+export async function POST(ctx: RouteContext) {
+    const body = await ctx.request.json();
+    
+    const newPost = {
+        id: posts.length + 1,
+        title: body.title,
+        slug: body.title.toLowerCase().replace(/\s+/g, "-"),
+    };
+    
+    posts.push(newPost);
+    
+    return new Response(JSON.stringify({ data: newPost }), {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+    });
+}
+```
+
+### Step 5: Create Contact Form with PRG Pattern
+
+**`src/routes/contact.tsx`:**
+
+```tsx
+import { Layout } from "../components/Layout";
+
+export const meta = {
+    title: "Contact Us",
+    description: "Get in touch with us",
+};
+
+// Handle form submission
 export async function POST({ request }) {
     const formData = await request.formData();
+    const name = formData.get("name");
     const email = formData.get("email");
+    const message = formData.get("message");
     
-    await saveToDatabase({ email });
+    // Save to database, send email, etc.
+    console.log("Contact form:", { name, email, message });
     
     // PRG: Post-Redirect-Get pattern
     return Response.redirect("/contact/success", 302);
@@ -206,214 +397,254 @@ export async function POST({ request }) {
 
 export default function ContactPage() {
     return (
-        <form method="POST" action="/contact">
-            <input type="email" name="email" required />
-            <button type="submit">Subscribe</button>
-        </form>
+        <Layout>
+            <h1 className="text-3xl font-bold mb-8">Contact Us</h1>
+            <form method="POST" className="max-w-md space-y-4">
+                <div>
+                    <label className="block text-sm font-medium mb-1">Name</label>
+                    <input 
+                        type="text" 
+                        name="name" 
+                        required
+                        className="w-full px-3 py-2 border rounded-lg"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium mb-1">Email</label>
+                    <input 
+                        type="email" 
+                        name="email" 
+                        required
+                        className="w-full px-3 py-2 border rounded-lg"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium mb-1">Message</label>
+                    <textarea 
+                        name="message" 
+                        rows={4}
+                        required
+                        className="w-full px-3 py-2 border rounded-lg"
+                    />
+                </div>
+                <button 
+                    type="submit"
+                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+                >
+                    Send Message
+                </button>
+            </form>
+        </Layout>
     );
 }
 ```
 
-**No JavaScript required.** Forms work natively.
-
----
-
-## 🎨 Styling (Tailwind-Ready)
-
-KilatJS supports Tailwind CSS via CLI (no Vite required):
-
-```bash
-# Generate CSS
-npx tailwindcss -i ./input.css -o ./styles.css --watch
-```
-
-Configure in your `kilat.config.ts`:
-
-```ts
-import { createKilat } from 'kilatjs';
-
-createKilat({
-    routesDir: "./routes",
-    tailwind: {
-        enabled: true,
-        cssPath: "./styles.css"
-    }
-});
-```
-
----
-
-## 📊 Rendering Modes
-
-### Static Generation
-
-- Build-time HTML
-- Best for SEO & caching
-- Requires explicit path enumeration for dynamic routes
+**`src/routes/contact/success.tsx`:**
 
 ```tsx
-export const mode = "static";
+import { Layout } from "../../components/Layout";
 
-export function getStaticPaths() {
-    return ["/blog/post-1", "/blog/post-2"];
+export const meta = {
+    title: "Message Sent",
+};
+
+export default function ContactSuccessPage() {
+    return (
+        <Layout>
+            <div className="text-center py-12">
+                <h1 className="text-3xl font-bold text-green-600 mb-4">✓ Message Sent!</h1>
+                <p className="text-gray-600 mb-8">Thank you for contacting us. We'll get back to you soon.</p>
+                <a href="/" className="text-blue-600 hover:underline">← Back to Home</a>
+            </div>
+        </Layout>
+    );
 }
 ```
 
-### Server-Side Rendering (SSR)
-
-- Request-time HTML
-- PHP-style execution
-- Infinite routes allowed
-
-```tsx
-export const mode = "ssr"; // or omit (default)
-```
-
 ---
 
-## 🔐 Authentication
-
-Identity is proven **per request** via cookies/headers:
+## 🔐 Authentication Example
 
 ```tsx
+// src/routes/dashboard.tsx
 export async function load({ request }) {
-    const session = await getSession(request.headers.get("cookie"));
+    const cookie = request.headers.get("cookie");
+    const session = await getSession(cookie);
     
     if (!session) {
-        throw Response.redirect("/login");
+        // Redirect to login if not authenticated
+        throw Response.redirect("/login", 302);
     }
     
     return { user: session.user };
 }
-```
 
-- Never trust localStorage for auth
-- Server validates every request
-- Cookies are the source of truth
+export default function DashboardPage({ data }) {
+    return (
+        <div>
+            <h1>Welcome, {data.user.name}!</h1>
+            <form method="POST" action="/logout">
+                <button type="submit">Logout</button>
+            </form>
+        </div>
+    );
+}
+```
 
 ---
 
-## 🏃 Running Your App
-
-### Development
+## 🛠️ Configuration Reference
 
 ```ts
-// Named import
-import { createKilat } from 'kilatjs';
+// kilat.config.ts
+import { defineConfig } from "kilatjs";
 
-// Or default import  
-import Kilat from 'kilatjs';
-
-const server = createKilat({
-    routesDir: "./routes",
-    port: 3000,
-    dev: true,
+export default defineConfig({
+    appDir: "./src",           // Source directory (auto-detects routes/ or pages/)
+    outDir: "./dist",          // Production build output
+    port: 3000,                // Server port
+    hostname: "localhost",     // Server hostname
+    publicDir: "./public",     // Static assets directory
     tailwind: {
-        enabled: false,
-        cssPath: "./styles.css"
-    }
-});
-
-server.start();
-```
-
-### Static Build
-
-```ts
-import { buildStatic } from 'kilatjs';
-
-buildStatic({
-    routesDir: "./routes",
-    outDir: "./dist"
+        enabled: true,         // Enable Tailwind CSS
+        inputPath: "./input.css",
+        cssPath: "./styles.css",
+    },
 });
 ```
 
 ---
 
-## 🧩 UI Framework Support
+## 🔥 Why Bun Native?
 
-| Framework | Status | Notes |
-|-----------|--------|-------|
-| React | ✅ Default | Full SSR support |
-| Solid | 🚧 Planned | Coming soon |
-| Vue | 🚧 Planned | Coming soon |
+KilatJS leverages Bun's runtime directly:
 
-**Rule:** One renderer per route. No mixing.
+- ⚡ **Bun.FileSystemRouter** - Zero-config file-based routing
+- 🚀 **Bun.serve()** - HTTP server with WebSocket support
+- 📦 **Bun.build()** - Native TypeScript/JSX bundling
+- 💾 **Bun.file()** - Streaming file operations
+- 🔍 **Bun.Glob** - Pattern matching for routes
 
----
-
-## 🎯 SEO Guarantee
-
-> **If a route exists, it is SEO-friendly.**
-
-Because:
-- HTML is always complete
-- `<head>` is server-rendered
-- No JS required for content
-- Meta tags are first-class
+**Performance:**
+- 3x faster cold starts vs Node.js
+- Native TypeScript - no transpilation
+- Zero-copy streaming for static files
 
 ---
 
-## 📜 Philosophy
+## ✅ Core Principles
 
-KilatJS rejects modern web complexity:
-
-| We Don't Do | We Do |
-|-------------|-------|
-| Client-side rendering | Server-rendered HTML |
-| Hydration/Islands | Static markup |
-| Client-side router | HTTP navigation |
-| Framework hooks | Props from loader |
-| State sync | HTTP mutations |
+1. **HTML is the protocol** — Every response is complete, semantic HTML
+2. **Server owns all truth** — No client-side state management
+3. **Every change = HTTP request** — Forms, mutations, navigation
+4. **UI frameworks render only** — React for templating, not orchestration
+5. **JavaScript is optional** — Sites work without JS
 
 ---
 
-## 🛠️ API Reference
+## ⚡ Client-Side Interactivity
 
-### `createKilat(config)`
+KilatJS is server-first, but you can add client-side interactivity using these patterns:
 
-Creates a Kilat server instance.
+### 1. `clientScript` Export (Recommended)
 
-```ts
-interface KilatConfig {
-    routesDir: string;      // Path to routes directory
-    outDir: string;         // Output for static builds
-    port?: number;          // Server port (default: 3000)
-    hostname?: string;      // Server hostname (default: "localhost")
-    dev?: boolean;          // Development mode
-    publicDir?: string;     // Static assets directory
-    tailwind?: {
-        enabled: boolean;
-        cssPath: string;
-        configPath?: string;
+Export a function that runs in the browser. TypeScript/LSP fully supports it!
+
+```tsx
+// src/routes/counter.tsx
+
+// Client-side script - auto-injected, LSP checks the code!
+export function clientScript() {
+    let count = 0;
+    const countEl = document.getElementById("count")!;
+    
+    document.getElementById("decrement")!.onclick = () => {
+        countEl.textContent = String(--count);
+    };
+    document.getElementById("increment")!.onclick = () => {
+        countEl.textContent = String(++count);
     };
 }
-```
 
-### `RouteContext`
-
-Passed to `load()` and action handlers:
-
-```ts
-interface RouteContext {
-    request: Request;                    // Web Request object
-    params: Record<string, string>;      // URL parameters
-    query: URLSearchParams;              // Query string
-    state: ServerGlobalState;            // Request-scoped state
+export default function CounterPage() {
+    return (
+        <div>
+            <button id="decrement">-</button>
+            <span id="count">0</span>
+            <button id="increment">+</button>
+        </div>
+    );
 }
 ```
 
-### `PageProps`
+The framework automatically injects the script - no manual `<script>` tags needed!
 
-Passed to page components:
+### 2. Alpine.js
 
-```ts
-interface PageProps {
-    data: any;                           // From load()
-    params: Record<string, string>;      // URL parameters
-    state: ServerGlobalState;            // Request-scoped state
+Lightweight reactivity with declarative HTML attributes:
+
+```tsx
+export default function AlpinePage() {
+    return (
+        <div x-data="{ count: 0 }">
+            <button x-on:click="count--">-</button>
+            <span x-text="count">0</span>
+            <button x-on:click="count++">+</button>
+        </div>
+    );
 }
 ```
+
+### 3. HTMX
+
+Server-driven UI updates without JavaScript:
+
+```html
+<!-- Can use .html files directly in routes/ -->
+<button 
+    hx-get="/api/greeting"
+    hx-target="#result"
+    hx-swap="innerHTML">
+    Load
+</button>
+<div id="result"></div>
+```
+
+KilatJS supports `.html` files as routes - perfect for HTMX pages!
+
+### 4. Native HTML Forms
+
+Best for mutations - no JS required:
+
+```tsx
+<form method="POST" action="/contact">
+    <input name="email" type="email" />
+    <button type="submit">Submit</button>
+</form>
+```
+
+---
+
+## ❌ What KilatJS Doesn't Do
+
+- ❌ Client-Side Rendering (CSR)
+- ❌ React Hydration / Islands
+- ❌ Client-side routing
+- ❌ React hooks (`useState`, `useEffect`) - No client React runtime
+- ❌ SPA patterns
+
+### Why No React Hooks?
+
+KilatJS uses `renderToStaticMarkup` which outputs pure HTML without React runtime. This means:
+
+- ✅ Faster page loads (no React bundle)
+- ✅ Better SEO (real HTML)
+- ✅ Works without JavaScript
+- ❌ No `useState`, `useEffect`, `onClick`
+
+**For interactivity, use `clientScript`, Alpine.js, HTMX, or vanilla JS instead.**
+
+> If you need React hooks with SSR, consider Next.js or Remix which have built-in hydration.
 
 ---
 
@@ -423,16 +654,6 @@ MIT
 
 ---
 
-## 🤝 Contributing
-
-KilatJS is in early development. Contributions welcome!
-
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request
-
----
-
 <p align="center">
-  <strong>Built with 💜 for the real web using Bun's native APIs.</strong>
+  <strong>Built with 💜 for the real web using Bun.</strong>
 </p>

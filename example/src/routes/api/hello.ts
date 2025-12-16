@@ -5,5 +5,5 @@ import { RouteContext } from "../../../../src";
  */
 
 export async function GET(ctx: RouteContext) {
-    return { message: "Hello World!" };
+    return { message: "Hello World! HAHA" };
 }

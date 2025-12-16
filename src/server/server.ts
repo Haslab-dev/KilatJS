@@ -1,76 +1,166 @@
 import { Router } from "../core/router";
 import { KilatConfig } from "../core/types";
+import { startLiveReload, notifyReload, watchDirectory } from "./live-reload";
 
 export class KilatServer {
     private router: Router;
     private config: KilatConfig;
+    
+    // Resolved paths
+    private appDir: string;
+    private routesDir: string;
 
     constructor(config: KilatConfig) {
         this.config = config;
-        this.router = new Router(config);
+        
+        // Resolve appDir and routesDir
+        const { appDir, routesDir } = this.resolvePaths(config);
+        this.appDir = appDir;
+        this.routesDir = routesDir;
+        
+        // Create config for router with resolved routesDir
+        this.router = new Router({ ...config, routesDir: this.routesDir });
+    }
+    
+    /**
+     * Resolve appDir and routesDir from config
+     * Auto-detects routes/ or pages/ folder inside appDir
+     */
+    private resolvePaths(config: KilatConfig): { appDir: string; routesDir: string } {
+        const cwd = process.cwd();
+        
+        const appDir = config.appDir.startsWith('/') 
+            ? config.appDir 
+            : `${cwd}/${config.appDir}`;
+        
+        // Check for routes/ or pages/ folder
+        const routesPath = `${appDir}/routes`;
+        const pagesPath = `${appDir}/pages`;
+        
+        // Sync check using spawnSync for constructor
+        const checkRoutes = Bun.spawnSync(["test", "-d", routesPath]);
+        if (checkRoutes.exitCode === 0) {
+            return { appDir, routesDir: routesPath };
+        }
+        
+        const checkPages = Bun.spawnSync(["test", "-d", pagesPath]);
+        if (checkPages.exitCode === 0) {
+            return { appDir, routesDir: pagesPath };
+        }
+        
+        // Default to routes if neither exists
+        console.warn(`⚠️ No routes/ or pages/ folder found in ${appDir}, defaulting to routes/`);
+        return { appDir, routesDir: routesPath };
     }
 
     async start() {
-        // Run Tailwind: Build first to ensure file exists
-        if (this.config.tailwind?.enabled) {
-            console.log("🎨 Building Tailwind CSS...");
-            await this.runTailwind(false);
+        const config = this.config;
+        const router = this.router;
 
-            // Then start watcher in dev mode
-            if (this.config.dev) {
-                this.runTailwind(true);
+        // Run Tailwind build (silent in dev mode)
+        if (config.tailwind?.enabled) {
+            await this.runTailwind(false, config.dev);
+            if (config.dev) {
+                this.runTailwind(true, true); // Start watcher silently
             }
         }
 
-        // Load all routes
-        await this.router.loadRoutes();
+        // Load all routes (silent in dev mode)
+        await router.loadRoutes(config.dev);
 
-        const router = this.router;
-        const config = this.config;
+        // Build the routes object for Bun.serve()
+        const routes: Record<string, any> = {};
+        
+        // Add static file routes
+        const cssPath = config.tailwind?.cssPath || "./styles.css";
+        routes["/styles.css"] = async () => {
+            const file = Bun.file(cssPath);
+            if (await file.exists()) {
+                return new Response(file, {
+                    headers: { "Content-Type": "text/css" }
+                });
+            }
+            return new Response("", { headers: { "Content-Type": "text/css" } });
+        };
 
-        // Start the server
+        // Use Bun.serve with development mode for HMR
         const server = Bun.serve({
             port: config.port || 3000,
             hostname: config.hostname || "localhost",
+            
+            // Enable Bun's native development features including HMR
+            development: config.dev ? {
+                hmr: true,
+                console: true,
+            } : false,
+
+            // Static routes
+            routes,
+
+            // Dynamic request handler
             async fetch(request: Request) {
                 return router.handleRequest(request);
             },
         });
 
-        console.log(`
-🚀 KilatJS Server Running!
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   Local:   http://${server.hostname}:${server.port}
-   Mode:    ${config.dev ? "Development" : "Production"}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        if (config.dev) {
+            // Clean dev output
+            console.log(`
+⚡ KilatJS Dev Server
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ➜ http://${server.hostname}:${server.port}
+  ➜ HMR + Live Reload enabled
+  ➜ Edit files and see changes instantly
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `);
 
-        if (config.dev) {
-            console.log("📁 Using FileSystemRouter for dynamic route discovery");
-            console.log("");
+            // Start live reload server (silent)
+            startLiveReload();
+
+            // Watch for file changes and notify browser
+            watchDirectory(this.routesDir, async () => {
+                await router.loadRoutes(true);
+                notifyReload();
+            });
+
+            // Also watch components directory if it exists
+            const componentsDir = `${this.appDir}/components`;
+            const checkComponents = Bun.spawnSync(["test", "-d", componentsDir]);
+            if (checkComponents.exitCode === 0) {
+                watchDirectory(componentsDir, async () => {
+                    await router.loadRoutes(true);
+                    notifyReload();
+                });
+            }
+        } else {
+            // Production output with route details
+            console.log(`
+🚀 KilatJS Production Server
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ➜ http://${server.hostname}:${server.port}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`);
         }
 
         return server;
     }
 
     async buildStatic() {
-        // Run Tailwind in build mode if enabled
+        console.log("\n🔨 KilatJS Production Build\n");
+
+        // Run Tailwind in build mode if enabled (message is inside runTailwind)
         if (this.config.tailwind?.enabled) {
-            await this.runTailwind(false);
+            await this.runTailwind(false, false);
         }
 
         // Load all routes
-        await this.router.loadRoutes();
-
-        console.log("🔨 Building for hybrid deployment...\n");
+        await this.router.loadRoutes(true);
 
         // Create output directory if it doesn't exist
         await this.ensureDir(this.config.outDir);
 
-        console.log("📄 Static build with FileSystemRouter:");
-        console.log("─────────────────────────────────────");
-        console.log("   Using Bun's built-in FileSystemRouter for dynamic routing");
-        console.log("   Static assets will be copied to output directory");
+        // Analyze and display routes
+        await this.displayRouteAnalysis();
 
         // Copy static assets
         await this.copyStaticAssets();
@@ -79,14 +169,84 @@ export class KilatServer {
         await this.generateProductionServer();
 
         console.log(`
-✅ Hybrid Build Complete!
+✅ Build Complete!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   Using Bun FileSystemRouter for all routes
-   Output: ${import.meta.dir}/../${this.config.outDir}
+   Output: ${this.config.outDir}
    
-   Run 'bun dist/server.js' to start the server.
+   Start: bun ${this.config.outDir}/server.js
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `);
+    }
+
+    /**
+     * Analyze routes and display detailed information
+     */
+    private async displayRouteAnalysis() {
+        console.log("📄 Routes Analysis:");
+        console.log("─────────────────────────────────────────────────────────");
+        
+        const routes: Array<{ path: string; type: string; file: string }> = [];
+        
+        // Scan all route files
+        try {
+            const proc = Bun.spawn(['find', this.routesDir, '-name', '*.ts', '-o', '-name', '*.tsx', '-o', '-name', '*.js', '-o', '-name', '*.jsx'], {
+                stdout: 'pipe',
+            });
+            
+            const output = await new Response(proc.stdout).text();
+            const files = output.trim().split('\n').filter(Boolean);
+            
+            for (const filePath of files) {
+                const relativePath = filePath.replace(this.routesDir, '');
+                let routePath = relativePath.replace(/\.(tsx?|jsx?)$/, '');
+                
+                if (routePath.endsWith('/index')) {
+                    routePath = routePath.slice(0, -6) || '/';
+                }
+                
+                if (!routePath.startsWith('/')) {
+                    routePath = '/' + routePath;
+                }
+                
+                // Determine route type
+                let type: string;
+                if (routePath.startsWith('/api')) {
+                    type = 'API';
+                } else if (routePath.includes('[')) {
+                    type = 'Dynamic SSR';
+                } else {
+                    type = 'SSR';
+                }
+                
+                const shortFile = relativePath.replace(/^\//, '');
+                routes.push({ path: routePath, type, file: shortFile });
+            }
+        } catch (error) {
+            console.warn('Failed to analyze routes:', error);
+        }
+
+        // Sort routes
+        routes.sort((a, b) => a.path.localeCompare(b.path));
+
+        // Display routes in a table format
+        const maxPathLen = Math.max(...routes.map(r => r.path.length), 10);
+        const maxTypeLen = Math.max(...routes.map(r => r.type.length), 6);
+
+        for (const route of routes) {
+            const typeIcon = route.type === 'API' ? '⚡' : route.type === 'Dynamic SSR' ? '🔄' : '📄';
+            const paddedPath = route.path.padEnd(maxPathLen);
+            const paddedType = route.type.padEnd(maxTypeLen);
+            console.log(`   ${typeIcon} ${paddedPath}  ${paddedType}  ${route.file}`);
+        }
+
+        console.log("─────────────────────────────────────────────────────────");
+        
+        // Summary
+        const apiCount = routes.filter(r => r.type === 'API').length;
+        const dynamicCount = routes.filter(r => r.type === 'Dynamic SSR').length;
+        const ssrCount = routes.filter(r => r.type === 'SSR').length;
+        
+        console.log(`   Total: ${routes.length} routes (${ssrCount} SSR, ${dynamicCount} Dynamic, ${apiCount} API)\n`);
     }
 
     /**
@@ -96,9 +256,8 @@ export class KilatServer {
         console.log("\n⚙️  Generating production server with FileSystemRouter...");
 
         // Copy entire src directory to preserve imports and structure
-        const srcDir = this.config.routesDir.replace('/routes', '');
         const srcOutDir = `${this.config.outDir}/src`;
-        await this.copyDir(srcDir, srcOutDir);
+        await this.copyDir(this.appDir, srcOutDir);
         console.log(`   ✓ src/ (copied with all components and routes)`);
 
         // Generate the production server using FileSystemRouter
@@ -191,7 +350,9 @@ Bun.serve({
             return new Response("404 Not Found", { status: 404 });
         }
         
-        console.log(\`Route matched: \${path} -> \${match.filePath}\`);
+        // Use relative path for cleaner logs
+        const relativePath = match.filePath.replace(ROOT + "/", "");
+        console.log(\`Route matched: \${path} -> \${relativePath}\`);
         
         try {
             // Dynamically import the route
@@ -264,18 +425,10 @@ Bun.serve({
         console.log(`   ✓ server.js (FileSystemRouter-based)`);
     }
 
-
-
-    private formatSize(bytes: number): string {
-        if (bytes < 1024) return `${bytes} B`;
-        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    }
-
-    private async runTailwind(watch: boolean) {
+    private async runTailwind(watch: boolean, silent: boolean = false) {
         const { inputPath, cssPath } = this.config.tailwind || {};
         if (!inputPath || !cssPath) {
-            console.warn("⚠️ Tailwind enabled but inputPath or cssPath missing");
+            if (!silent) console.warn("⚠️ Tailwind enabled but inputPath or cssPath missing");
             return;
         }
 
@@ -288,12 +441,14 @@ Bun.serve({
             args.push("--watch");
         }
 
-        console.log(`🎨 ${watch ? "Watching" : "Building"} Tailwind CSS...`);
+        if (!silent) {
+            console.log(`🎨 ${watch ? "Watching" : "Building"} Tailwind CSS...`);
+        }
         
         try {
             const proc = Bun.spawn(args, {
-                stdout: "inherit",
-                stderr: "inherit",
+                stdout: silent ? "pipe" : "inherit",
+                stderr: silent ? "pipe" : "inherit",
                 cwd: process.cwd(),
             });
 
@@ -301,11 +456,9 @@ Bun.serve({
                 await proc.exited;
             }
         } catch (error) {
-            console.error("Failed to run Tailwind:", error);
+            if (!silent) console.error("Failed to run Tailwind:", error);
         }
     }
-
-
 
     private async copyStaticAssets() {
         console.log("\n📦 Copying static assets...");
@@ -331,7 +484,6 @@ Bun.serve({
     }
 
     private async copyDir(src: string, dest: string) {
-        // Use Bun's file operations for copying directories
         try {
             const proc = Bun.spawn(["cp", "-r", src, dest], {
                 stdout: "pipe",
