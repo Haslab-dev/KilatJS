@@ -369,6 +369,40 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
     );
 }
+`,
+                "AGENTS.md": `# 🤖 KilatJS for AI Agents
+
+Welcome, AI agent! This guide helps you understand how to work with KilatJS codebases efficiently.
+
+## ⚡ Core Architecture
+KilatJS is **HTML-first** and **Bun-native**.
+- **SSR Routes**: Found in \`routes/\`. Files export \`load\` (server data) and a default React component (HTML template).
+- **API Routes**: Found in \`routes/api/\`. Files export HTTP methods (GET, POST, etc.) and return \`Response\` objects.
+- **Client App**: Optional React SPA in \`App.tsx\` and \`index.client.tsx\`, served at the route defined in \`kilat.config.ts\`.
+- **Hybrid**: SSR is for SEO-heavy pages (no React runtime in browser); CSR is for complex interactivity.
+
+## 🛠️ Common Tasks for Agents
+
+### 1. Adding a New SSR Route
+Create \`routes/pagename.tsx\`. 
+- Export \`meta\` for SEO.
+- Export \`load\` for data fetching.
+- Use \`default export\` for the UI.
+
+### 2. Adding an API Endpoint
+Create \`routes/api/resource.ts\`.
+- Export async functions named after HTTP verbs (GET, POST, etc.).
+
+### 3. Styling
+- Use Tailwind CSS v4 classes directly in components.
+- Edits to components trigger HMR. Edits to \`.css\` trigger hot-CSS-reload.
+
+## 📝 Example: Data Flow
+1. User hits \`/\`
+2. \`routes/index.tsx\` -> \`load()\` runs on server.
+3. Returned data is passed to \`HomePage\` component.
+4. Component renders to static HTML.
+5. Browser receives pure HTML.
 `
             };
 
