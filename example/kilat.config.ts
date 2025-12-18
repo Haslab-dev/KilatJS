@@ -1,13 +1,16 @@
 import { defineConfig } from "kilatjs";
 
 export default defineConfig({
-    appDir: "./src",  // Auto-detects routes/ or pages/ folder inside
+    appDir: ".",
     outDir: "./dist",
     port: 3000,
     hostname: "localhost",
+    ssrRoot: true,
+    clientRoute: "/client",
+    publicDir: "./public",
     tailwind: {
         enabled: true,
         inputPath: "./input.css",
-        cssPath: "./styles.css",
+        cssPath: "./public/styles.css",
     },
 });

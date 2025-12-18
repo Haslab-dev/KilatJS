@@ -57,7 +57,7 @@ export default function HomePage({ data }: { data: any; params: any; state: any 
                         Server time: {data.serverTime}
                     </div>
                     <h1 className="text-5xl md:text-7xl font-extrabold leading-tight tracking-tight mb-6 bg-gradient-to-br from-[#18181b] via-[#6d28d9] to-[#f97316] bg-clip-text text-transparent">
-                        Build for the cool,<br />
+                        Build for the cool how,<br />
                         <span className="bg-gradient-to-br from-[#7c3aed] to-[#f97316] bg-clip-text text-transparent">Not Against It</span>
                     </h1>
                     <p className="text-lg md:text-xl text-neutral-600 max-w-2xl mx-auto mb-10 leading-relaxed">
@@ -65,8 +65,11 @@ export default function HomePage({ data }: { data: any; params: any; state: any 
                         No hydration. No client routing. Just fast, real HTML.
                     </p>
                     <div className="flex gap-4 justify-center flex-wrap md:flex-col">
-                        <a href="/about" className="inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold text-base rounded-xl cursor-pointer border-none transition-all duration-150 text-white shadow-lg bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] shadow-[0_4px_6px_-1px_rgb(0_0_0/0.1),0_0_30px_-10px_#8b5cf6] hover:-translate-y-0.5 hover:shadow-[0_10px_15px_-3px_rgb(0_0_0/0.1),0_0_40px_-10px_#8b5cf6] md:w-full">
+                         <a href="/about" className="inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold text-base rounded-xl cursor-pointer border-none transition-all duration-150 text-white shadow-lg bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] shadow-[0_4px_6px_-1px_rgb(0_0_0/0.1),0_0_30px_-10px_#8b5cf6] hover:-translate-y-0.5 hover:shadow-[0_10px_15px_-3px_rgb(0_0_0/0.1),0_0_40px_-10px_#8b5cf6] md:w-full">
                             Learn More →
+                        </a>
+                        <a href="/client" className="inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold text-base rounded-xl cursor-pointer border border-[#8b5cf6] transition-all duration-150 bg-[#f5f3ff] text-[#7c3aed] hover:-translate-y-0.5 hover:bg-[#ede9fe] md:w-full">
+                            ⚛️ React Client Example
                         </a>
                         <a href="/blog" className="inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold text-base rounded-xl cursor-pointer border-none transition-all duration-150 bg-white text-neutral-700 border border-neutral-200 shadow-sm hover:bg-neutral-50 hover:border-neutral-300 hover:-translate-y-0.5 md:w-full">
                             Read the Blog
