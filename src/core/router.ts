@@ -261,6 +261,30 @@ export class Router {
         // SSR routing
         const match = this.matchRoute(path);
         if (!match) {
+            const clientRoute = this.config.clientRoute || "/";
+            const ssrRoot = this.config.ssrRoot ?? true;
+
+            // Fallback to index.html if:
+            // 1. Path matches clientRoute (exact or as a directory)
+            // 2. AND (ssrRoot is false OR path is not root OR clientRoute is not root)
+            const isClientPath = path === clientRoute || path.startsWith(clientRoute + "/");
+            const shouldFallback = isClientPath && (!ssrRoot || path !== "/" || clientRoute !== "/");
+
+            if (shouldFallback) {
+                const possibleIndexPaths = ["public/index.html", "index.html"];
+                for (const p of possibleIndexPaths) {
+                    const fullPath = `${process.cwd()}/${p}`;
+                    const file = Bun.file(fullPath);
+                    if (await file.exists()) {
+                        return new Response(file, {
+                            headers: { 
+                                "Content-Type": "text/html",
+                                "Cache-Control": "no-cache" 
+                            }
+                        });
+                    }
+                }
+            }
             return Router.NOT_FOUND_RESPONSE;
         }
 

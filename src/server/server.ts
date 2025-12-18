@@ -1,5 +1,6 @@
 import { Router } from "../core/router";
 import { KilatConfig } from "../core/types";
+import { dirname } from "path";
 import { startLiveReload, notifyReload, watchDirectory } from "./live-reload";
 
 export class KilatServer {
@@ -83,6 +84,89 @@ export class KilatServer {
             return new Response("", { headers: { "Content-Type": "text/css" } });
         };
 
+        // Handle clientRoute and auto-detecting index.html
+        const clientRouteBase = config.clientRoute || "/";
+        const ssrRoot = config.ssrRoot ?? true;
+        
+        // Auto-detect index.html
+        let indexPath = "";
+        const possibleIndexPaths = ["public/index.html", "index.html"];
+        for (const p of possibleIndexPaths) {
+            const fullPath = `${process.cwd()}/${p}`;
+            if (Bun.spawnSync(["test", "-f", fullPath]).exitCode === 0) {
+                indexPath = fullPath;
+                break;
+            }
+        }
+
+        // If we want client to be root or if client is on a specific subpath
+        if (indexPath && (!ssrRoot || clientRouteBase !== "/")) {
+            const handler = async () => {
+                const file = Bun.file(indexPath);
+                if (config.dev) {
+                    let html = await file.text();
+                    const { getLiveReloadScript } = await import("./live-reload");
+                    html = html.replace("</body>", `${getLiveReloadScript()}</body>`);
+                    return new Response(html, {
+                        headers: { "Content-Type": "text/html" }
+                    });
+                }
+                return new Response(file, {
+                    headers: { "Content-Type": "text/html" }
+                });
+            };
+            
+            routes[clientRouteBase] = handler;
+            if (clientRouteBase !== "/" && !clientRouteBase.endsWith("/")) {
+                routes[clientRouteBase + "/"] = handler;
+            }
+        }
+
+        // Handle clientEntry (auto-detect index.client.tsx if not provided)
+        let clientEntry = config.clientEntry;
+        if (!clientEntry) {
+            const defaultEntry = "index.client.tsx";
+            if (Bun.spawnSync(["test", "-f", `${process.cwd()}/${defaultEntry}`]).exitCode === 0) {
+                clientEntry = defaultEntry;
+            }
+        }
+
+        if (clientEntry) {
+            // Update config to reflect detected entry (useful for router)
+            (config as any).clientEntry = clientEntry;
+            
+            // In dev mode, we use a reference that can be updated by the watcher
+            let clientJs: any = await this.bundleClient();
+
+            const base = clientRouteBase === "/" ? "" : clientRouteBase;
+            const clientName = clientEntry.replace(/\.(tsx?|jsx?)$/, '.js');
+            const clientRoute = `${base}/${clientName}`;
+            const originalRoute = `${base}/${clientEntry}`;
+            
+            const handler = async () => {
+                return new Response(clientJs, {
+                    headers: { "Content-Type": "application/javascript" }
+                });
+            };
+            
+            routes[clientRoute] = handler;
+            routes[originalRoute] = handler;
+            
+            console.log(`   ✓ Client served at ${clientRoute}`);
+
+            // If in dev mode, watch for client changes
+            if (config.dev) {
+                const clientEntryPath = clientEntry.startsWith('/') ? clientEntry : `${process.cwd()}/${clientEntry}`;
+                const clientDir = dirname(clientEntryPath);
+                
+                watchDirectory(clientDir, async (filename) => {
+                    console.log(`📦 Re-bundling client: ${clientEntry}...`);
+                    clientJs = await this.bundleClient();
+                    notifyReload(filename);
+                });
+            }
+        }
+
         // Use Bun.serve with development mode for HMR
         const server = Bun.serve({
             port: config.port || 3000,
@@ -118,18 +202,18 @@ export class KilatServer {
             startLiveReload();
 
             // Watch for file changes and notify browser
-            watchDirectory(this.routesDir, async () => {
+            watchDirectory(this.routesDir, async (filename) => {
                 await router.loadRoutes(true);
-                notifyReload();
+                notifyReload(filename);
             });
 
             // Also watch components directory if it exists
             const componentsDir = `${this.appDir}/components`;
             const checkComponents = Bun.spawnSync(["test", "-d", componentsDir]);
             if (checkComponents.exitCode === 0) {
-                watchDirectory(componentsDir, async () => {
+                watchDirectory(componentsDir, async (filename) => {
                     await router.loadRoutes(true);
-                    notifyReload();
+                    notifyReload(filename);
                 });
             }
         } else {
@@ -161,6 +245,11 @@ export class KilatServer {
 
         // Analyze and display routes
         await this.displayRouteAnalysis();
+
+        // Bundle client entry if provided
+        if (this.config.clientEntry) {
+            await this.bundleClient();
+        }
 
         // Copy static assets
         await this.copyStaticAssets();
@@ -480,6 +569,48 @@ Bun.serve({
                 await this.copyDir(this.config.publicDir, this.config.outDir);
                 console.log(`   ✓ public assets`);
             }
+        }
+
+        // Auto-detect and copy index.html
+        const possibleIndexPaths = ["public/index.html", "index.html"];
+        for (const p of possibleIndexPaths) {
+            const indexFile = Bun.file(p);
+            if (await indexFile.exists()) {
+                await Bun.write(`${this.config.outDir}/index.html`, indexFile);
+                console.log(`   ✓ index.html`);
+                break;
+            }
+        }
+    }
+
+    private async bundleClient() {
+        if (!this.config.clientEntry) return;
+
+        const entryPath = this.config.clientEntry.startsWith('/') 
+            ? this.config.clientEntry 
+            : `${process.cwd()}/${this.config.clientEntry}`;
+        
+        const isDev = this.config.dev;
+        
+        console.log(`📦 Bundling client entry${!isDev ? ' for production' : ''}: ${this.config.clientEntry}...`);
+        
+        const bundle = await Bun.build({
+            entrypoints: [entryPath],
+            outdir: isDev ? undefined : this.config.outDir,
+            naming: "[name].js",
+            minify: !isDev,
+            sourcemap: isDev ? "external" : "none",
+            target: "browser",
+        });
+
+        if (bundle.success) {
+            if (!isDev) {
+                console.log(`   ✓ Client bundled to ${this.config.outDir}`);
+            }
+            return bundle.outputs[0];
+        } else {
+            console.error("❌ Client bundle failed:", bundle.logs);
+            return null;
         }
     }
 

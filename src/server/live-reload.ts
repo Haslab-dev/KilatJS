@@ -47,8 +47,8 @@ export function startLiveReload(port: number = 35729): void {
 /**
  * Notify all connected browsers to reload
  */
-export function notifyReload(): void {
-    const message = JSON.stringify({ type: "reload" });
+export function notifyReload(filename?: string): void {
+    const message = JSON.stringify({ type: "reload", filename });
     for (const client of clients) {
         try {
             client.send(message);
@@ -69,6 +69,19 @@ export function getLiveReloadScript(port: number = 35729): string {
     ws.onmessage = function(e) {
         const data = JSON.parse(e.data);
         if (data.type === 'reload') {
+            if (data.filename && (data.filename.endsWith('.css') || data.filename.endsWith('input.css'))) {
+                console.log('[KilatJS] Hot reloading CSS...');
+                const links = document.getElementsByTagName("link");
+                for (let i = 0; i < links.length; i++) {
+                    const link = links[i];
+                    if (link.rel === "stylesheet") {
+                        const url = new URL(link.href, location.href);
+                        url.searchParams.set('t', Date.now());
+                        link.href = url.toString();
+                    }
+                }
+                return;
+            }
             console.log('[KilatJS] Reloading...');
             location.reload();
         }
@@ -85,7 +98,7 @@ export function getLiveReloadScript(port: number = 35729): string {
  * Watch a directory for changes and trigger reload
  * Uses a polling-based approach that works reliably with Bun
  */
-export async function watchDirectory(dir: string, onChange: () => void): Promise<void> {
+export async function watchDirectory(dir: string, onChange: (filename: string) => void): Promise<void> {
     // Track file modification times
     const fileTimestamps = new Map<string, number>();
     
@@ -101,39 +114,52 @@ export async function watchDirectory(dir: string, onChange: () => void): Promise
         if (timeout) clearTimeout(timeout);
         timeout = setTimeout(() => {
             // Silent reload - no console output
-            onChange();
+            onChange(filename);
         }, 50);
     };
 
-    // Scan directory for files
-    async function scanFiles(): Promise<Map<string, number>> {
+    // Scan directory for files safely
+    async function scanFiles(currentDir: string): Promise<Map<string, number>> {
         const timestamps = new Map<string, number>();
         try {
-            const glob = new Bun.Glob("**/*.{ts,tsx,js,jsx,css}");
-            for await (const file of glob.scan({ cwd: dir, absolute: true })) {
-                try {
-                    const stat = Bun.file(file);
-                    const lastModified = (await stat.stat())?.mtime?.getTime() || 0;
-                    timestamps.set(file, lastModified);
-                } catch {
-                    // File might have been deleted
+            const entries = await Bun.file(currentDir).exists() ? [] : []; // Just a check
+            // Use readdir for manual control over recursion
+            const { readdir } = await import("fs/promises");
+            const files = await readdir(currentDir, { withFileTypes: true });
+
+            for (const file of files) {
+                const fullPath = `${currentDir}/${file.name}`;
+                
+                // Skip sensitive/large directories early
+                if (file.isDirectory()) {
+                    if (file.name === "node_modules" || file.name === ".git" || file.name === "dist") continue;
+                    const subTimestamps = await scanFiles(fullPath);
+                    for (const [p, t] of subTimestamps) timestamps.set(p, t);
+                } else if (file.isFile() && /\.(ts|tsx|js|jsx|css)$/.test(file.name)) {
+                    try {
+                        const stat = Bun.file(fullPath);
+                        const lastModified = (await stat.stat())?.mtime?.getTime() || 0;
+                        timestamps.set(fullPath, lastModified);
+                    } catch {
+                        // File might have been deleted/locked
+                    }
                 }
             }
         } catch (error) {
-            console.warn(`⚠️ Could not scan directory ${dir}:`, error);
+            // Silently handle errors for specific files/dirs
         }
         return timestamps;
     }
 
     // Initial scan
-    const initialFiles = await scanFiles();
+    const initialFiles = await scanFiles(dir);
     for (const [file, time] of initialFiles) {
         fileTimestamps.set(file, time);
     }
 
     // Poll for changes every 500ms
     const pollInterval = setInterval(async () => {
-        const currentFiles = await scanFiles();
+        const currentFiles = await scanFiles(dir);
         
         // Check for new or modified files
         for (const [file, time] of currentFiles) {

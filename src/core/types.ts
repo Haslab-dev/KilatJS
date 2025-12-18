@@ -84,6 +84,12 @@ export interface KilatConfig {
     dev?: boolean;
     publicDir?: string;
     tailwind?: TailwindConfig;
+    /** Entry point for React client hydration (e.g., "index.tsx") */
+    clientEntry?: string;
+    /** Base route for the client app (e.g., "/" or "/client") */
+    clientRoute?: string;
+    /** Whether SSR index route should take precedence at root (default: true) */
+    ssrRoot?: boolean;
 }
 
 // Helper type for loader data
