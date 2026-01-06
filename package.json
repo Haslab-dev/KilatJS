@@ -1,6 +1,6 @@
 {
     "name": "kilatjs",
-    "version": "0.1.4",
+    "version": "0.1.5",
     "description": "A Bun-native, HTML-first framework that renders real pages, treats UI frameworks as renderers, and makes SEO the default.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",

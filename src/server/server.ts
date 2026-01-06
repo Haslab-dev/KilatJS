@@ -19,8 +19,8 @@ export class KilatServer {
         this.appDir = appDir;
         this.routesDir = routesDir;
         
-        // Create config for router with resolved routesDir
-        this.router = new Router({ ...config, routesDir: this.routesDir });
+        // Create config for router with resolved routesDir and absolute appDir
+        this.router = new Router({ ...config, appDir: this.appDir, routesDir: this.routesDir });
     }
     
     /**
@@ -216,6 +216,14 @@ export class KilatServer {
                     notifyReload(filename);
                 });
             }
+
+            // Watch for middleware.ts/js in appDir
+            watchDirectory(this.appDir, async (filename) => {
+                if (filename === "middleware.ts" || filename === "middleware.js" || filename === "kilat.config.ts") {
+                    await router.loadRoutes(true);
+                    notifyReload(filename);
+                }
+            });
         } else {
             // Production output with route details
             console.log(`

@@ -1,4 +1,4 @@
-import { defineConfig } from "kilatjs";
+import { defineConfig, Middleware } from "kilatjs";
 
 export default defineConfig({
     appDir: ".",
@@ -13,4 +13,14 @@ export default defineConfig({
         inputPath: "./input.css",
         cssPath: "./public/styles.css",
     },
+    middlewares: [
+        async (ctx, next) => {
+            const start = Date.now();
+            console.log(`[Global Middleware] ${ctx.request.method} ${ctx.request.url}`);
+            const response = await next();
+            const duration = Date.now() - start;
+            response.headers.set("X-Response-Time", `${duration}ms`);
+            return response;
+        }
+    ] as Middleware[]
 });

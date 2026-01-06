@@ -1,4 +1,4 @@
-import { RouteMatch, RouteContext, ServerGlobalState, KilatConfig, UIFramework, RouteMeta, RouteType, RouteExports } from "./types";
+import { RouteMatch, RouteContext, ServerGlobalState, KilatConfig, UIFramework, RouteMeta, RouteType, RouteExports, Middleware, MiddlewareModule } from "./types";
 import { ReactAdapter } from "../adapters/react";
 import { HTMXAdapter } from "../adapters/htmx";
 
@@ -18,6 +18,7 @@ export class Router {
     private preloadedRoutes: Map<string, any> = new Map();
     private routePatterns: Array<{ pattern: RegExp; filePath: string; paramNames: string[]; routeType: RouteType }> = [];
     private apiRoutes: Map<string, any> = new Map();
+    private standaloneMiddleware: MiddlewareModule | null = null;
     
     // Pre-compiled responses
     private static readonly NOT_FOUND_RESPONSE = new Response("404 Not Found", { status: 404 });
@@ -60,12 +61,49 @@ export class Router {
         this.routePatterns.length = 0;
         this.apiRoutes.clear();
         this.staticHtmlFiles.clear();
+        this.standaloneMiddleware = null;
+
+        // Load standalone middleware (middleware.ts)
+        await this.loadMiddlewareFile();
 
         // Pre-load all routes
         await this.preloadAllRoutes(silent);
         
         if (!silent) {
             console.log("🔄 FileSystemRouter initialized with", this.preloadedRoutes.size, "routes");
+        }
+    }
+
+    private async loadMiddlewareFile() {
+        const filenames = ["middleware.ts", "middleware.js"];
+        // Search in appDir (parent of routesDir usually)
+        const possibleDirs = [
+            this.config.appDir,
+            process.cwd()
+        ];
+
+        for (const dir of possibleDirs) {
+            for (const filename of filenames) {
+                let filePath = `${dir}/${filename}`.replace("//", "/");
+                
+                // Ensure filePath is absolute for dynamic import to work correctly
+                if (!filePath.startsWith("/")) {
+                    filePath = `${process.cwd()}/${filePath}`;
+                }
+                
+                const file = Bun.file(filePath);
+                if (await file.exists()) {
+                    try {
+                        const module = await import(filePath);
+                        if (module.middleware) {
+                            this.standaloneMiddleware = module;
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn(`Failed to load middleware from ${filePath}:`, e);
+                    }
+                }
+            }
         }
     }
 
@@ -217,12 +255,78 @@ export class Router {
         return match;
     }
 
+    private async executeMiddlewares(
+        middlewares: Middleware[],
+        context: RouteContext,
+        handler: () => Promise<Response>
+    ): Promise<Response> {
+        let index = -1;
+
+        const next = async (): Promise<Response> => {
+            index++;
+            if (index < middlewares.length) {
+                try {
+                    return await middlewares[index](context, next);
+                } catch (error) {
+                    console.error("Middleware Error:", error);
+                    return Router.INTERNAL_ERROR_RESPONSE;
+                }
+            }
+            return await handler();
+        };
+
+        return await next();
+    }
+
+    private shouldRunStandaloneMiddleware(path: string): boolean {
+        if (!this.standaloneMiddleware || !this.standaloneMiddleware.middleware) return false;
+        
+        const config = this.standaloneMiddleware.config;
+        if (!config || !config.matcher) return true; // Default to all paths
+
+        const matchers = Array.isArray(config.matcher) ? config.matcher : [config.matcher];
+        
+        for (const matcher of matchers) {
+            // Simple glob-to-regex conversion or prefix matching
+            if (matcher === path) return true;
+            if (matcher.endsWith('*')) {
+                const prefix = matcher.slice(0, -1);
+                if (path.startsWith(prefix)) return true;
+            }
+            if (matcher.includes(':')) {
+                // Dynamic matcher - very basic implementation
+                const pattern = matcher.replace(/:[^\/]+/g, '[^/]+');
+                const regex = new RegExp(`^${pattern}$`);
+                if (regex.test(path)) return true;
+            }
+        }
+
+        return false;
+    }
+
     async handleRequest(request: Request): Promise<Response> {
         const url = request.url;
         const pathStart = url.indexOf('/', 8);
         const pathEnd = url.indexOf('?', pathStart);
         const path = pathEnd === -1 ? url.slice(pathStart) : url.slice(pathStart, pathEnd);
 
+        // Standalone middleware check (runs before everything, even if route doesn't exist)
+        if (this.shouldRunStandaloneMiddleware(path)) {
+            const context = {
+                request,
+                params: {},
+                query: new URLSearchParams(url.split('?')[1] || ''),
+                state: {},
+            };
+            return await this.standaloneMiddleware!.middleware(context, async () => {
+                return await this.internalDispatch(request, path, url);
+            });
+        }
+
+        return await this.internalDispatch(request, path, url);
+    }
+
+    private async internalDispatch(request: Request, path: string, url: string): Promise<Response> {
         // Fast path for API routes
         if (path.startsWith('/api/')) {
             return this.handleApiRouteFast(request, path);
@@ -291,56 +395,72 @@ export class Router {
         const { params, exports, routeType } = match;
         const context = this.getContextFromPool(request, params, url);
 
-        // Handle non-GET methods
-        if (request.method !== "GET" && request.method !== "HEAD") {
-            const actionHandler = exports[request.method as keyof Omit<RouteExports, 'default' | 'mode' | 'ui' | 'load' | 'meta' | 'getStaticPaths' | 'clientScript'>];
-            if (actionHandler && typeof actionHandler === "function") {
-                try {
-                    const result = await actionHandler(context);
-                    this.returnContextToPool(context);
-                    return result;
-                } catch (error) {
-                    this.returnContextToPool(context);
-                    console.error(`Error handling ${request.method}:`, error);
-                    return Router.INTERNAL_ERROR_RESPONSE;
+        // Combine global and route-specific middlewares (standalone already ran)
+        const middlewares: Middleware[] = [
+            ...(this.config.middlewares || []),
+            ...(exports.middlewares || [])
+        ];
+
+        const handler = async (): Promise<Response> => {
+            // Handle non-GET methods
+            if (request.method !== "GET" && request.method !== "HEAD") {
+                const actionHandler = exports[request.method as keyof Omit<RouteExports, 'default' | 'mode' | 'ui' | 'load' | 'meta' | 'getStaticPaths' | 'clientScript' | 'middlewares'>];
+                if (actionHandler && typeof actionHandler === "function") {
+                    try {
+                        return await actionHandler(context);
+                    } catch (error) {
+                        console.error(`Error handling ${request.method}:`, error);
+                        return Router.INTERNAL_ERROR_RESPONSE;
+                    }
                 }
+                return Router.METHOD_NOT_ALLOWED_RESPONSE;
             }
-            this.returnContextToPool(context);
-            return Router.METHOD_NOT_ALLOWED_RESPONSE;
-        }
 
-        // Handle GET - SSR
+            // Handle GET - SSR
+            try {
+                const data = exports.load ? await exports.load(context) : {};
+
+                if (data instanceof Response) {
+                    return data;
+                }
+
+                const meta: RouteMeta = exports.meta || {};
+                const html = await this.renderPage(
+                    exports.default, 
+                    { data, params, state: context.state }, 
+                    exports.ui, 
+                    meta,
+                    { clientScript: exports.clientScript }
+                );
+
+                const cacheControl = routeType === "dynamic" ? "no-cache" : "public, max-age=3600";
+
+                return new Response(html, {
+                    headers: {
+                        "Content-Type": "text/html; charset=utf-8",
+                        "Cache-Control": cacheControl,
+                    },
+                });
+            } catch (error) {
+                if (error instanceof Response) return error;
+                console.error("Error rendering page:", error);
+                return Router.INTERNAL_ERROR_RESPONSE;
+            }
+        };
+
         try {
-            const data = exports.load ? await exports.load(context) : {};
-
-            if (data instanceof Response) {
+            if (middlewares.length > 0) {
+                const response = await this.executeMiddlewares(middlewares, context, handler);
                 this.returnContextToPool(context);
-                return data;
+                return response;
+            } else {
+                const response = await handler();
+                this.returnContextToPool(context);
+                return response;
             }
-
-            const meta: RouteMeta = exports.meta || {};
-            const html = await this.renderPage(
-                exports.default, 
-                { data, params, state: context.state }, 
-                exports.ui, 
-                meta,
-                { clientScript: exports.clientScript }
-            );
-
-            const cacheControl = routeType === "dynamic" ? "no-cache" : "public, max-age=3600";
-
-            this.returnContextToPool(context);
-            return new Response(html, {
-                headers: {
-                    "Content-Type": "text/html; charset=utf-8",
-                    "Cache-Control": cacheControl,
-                },
-            });
         } catch (error) {
             this.returnContextToPool(context);
-            if (error instanceof Response) return error;
-            console.error("Error rendering page:", error);
-            return Router.INTERNAL_ERROR_RESPONSE;
+            throw error;
         }
     }
 
@@ -371,23 +491,38 @@ export class Router {
         
         if (!exports) return Router.NOT_FOUND_RESPONSE;
 
-        const handler = exports[request.method] || exports.default;
-        if (!handler || typeof handler !== "function") {
-            return Router.METHOD_NOT_ALLOWED_RESPONSE;
-        }
+        const context = this.getMinimalApiContext(request, params);
 
-        try {
-            const context = this.getMinimalApiContext(request, params);
-            const response = await handler(context);
-            
-            if (response instanceof Response) return response;
+        // Combine global and route-specific middlewares
+        const middlewares: Middleware[] = [
+            ...(this.config.middlewares || []),
+            ...(exports.middlewares || [])
+        ];
 
-            return new Response(JSON.stringify(response), {
-                headers: { "Content-Type": "application/json" },
-            });
-        } catch (error) {
-            console.error(`API Error [${request.method} ${path}]:`, error);
-            return Router.INTERNAL_ERROR_RESPONSE;
+        const handler = async (): Promise<Response> => {
+            const apiHandler = exports[request.method] || exports.default;
+            if (!apiHandler || typeof apiHandler !== "function") {
+                return Router.METHOD_NOT_ALLOWED_RESPONSE;
+            }
+
+            try {
+                const response = await apiHandler(context);
+                
+                if (response instanceof Response) return response;
+
+                return new Response(JSON.stringify(response), {
+                    headers: { "Content-Type": "application/json" },
+                });
+            } catch (error) {
+                console.error(`API Error [${request.method} ${path}]:`, error);
+                return Router.INTERNAL_ERROR_RESPONSE;
+            }
+        };
+
+        if (middlewares.length > 0) {
+            return await this.executeMiddlewares(middlewares, context, handler);
+        } else {
+            return await handler();
         }
     }
 

@@ -10,6 +10,26 @@ export type RenderMode = "static" | "ssr" | "api";
 export type UIFramework = "react" | "htmx";
 
 /**
+ * Middleware function type
+ */
+export type Middleware = (ctx: RouteContext, next: () => Promise<Response>) => Promise<Response>;
+
+/**
+ * Middleware config for path matching
+ */
+export interface MiddlewareConfig {
+    matcher?: string | string[];
+}
+
+/**
+ * Middleware module structure (middleware.ts)
+ */
+export interface MiddlewareModule {
+    middleware: Middleware;
+    config?: MiddlewareConfig;
+}
+
+/**
  * Route type classification for build/runtime decisions:
  * - "static": Routes without dynamic segments, built at compile time
  * - "dynamic": Routes with [param] segments, rendered at runtime
@@ -48,6 +68,8 @@ export interface RouteExports {
     getStaticPaths?: () => Promise<string[]> | string[];
     /** Client-side script function - auto-injected into page, runs in browser */
     clientScript?: () => void;
+    /** Route-specific middlewares */
+    middlewares?: Middleware[];
     POST?: (ctx: RouteContext) => Promise<Response> | Response;
     PUT?: (ctx: RouteContext) => Promise<Response> | Response;
     DELETE?: (ctx: RouteContext) => Promise<Response> | Response;
@@ -90,6 +112,8 @@ export interface KilatConfig {
     clientRoute?: string;
     /** Whether SSR index route should take precedence at root (default: true) */
     ssrRoot?: boolean;
+    /** Global middlewares applied to all routes */
+    middlewares?: Middleware[];
 }
 
 // Helper type for loader data
