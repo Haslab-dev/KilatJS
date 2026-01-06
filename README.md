@@ -321,6 +321,41 @@ export async function POST(ctx: RouteContext) {
     headers: { "Content-Type": "application/json" },
   });
 }
+
+/**
+ * NEW: Standalone API Mode with Swagger Documentation
+ * KilatJS provides a dedicated core for building pure APIs.
+ */
+
+// example/server.ts
+import KilatJS, { swagger, RouteContext } from "kilatjs/core";
+
+const app = new KilatJS();
+
+// Register Swagger documentation
+app.use(
+  swagger(app, {
+    path: "/docs",
+    title: "KilatJS API",
+    description: "Automatic API documentation",
+  })
+);
+
+// Route with metadata for Swagger
+app.post(
+  "/api/echo",
+  {
+    summary: "Echo request",
+    body: { text: "string" }, // Optional: for documentation
+    response: { echo: {}, receivedAt: "string" }, // Optional: for documentation
+  },
+  async (ctx: RouteContext) => {
+    const body = await ctx.request.json();
+    return { echo: body, receivedAt: new Date() };
+  }
+);
+
+app.listen(4000);
 ```
 
 ### Step 5: Create Contact Form with PRG Pattern
@@ -611,6 +646,46 @@ KilatJS uniquely allows you to mix **HTML-First SSR** with **Full React CSR**:
 - **Use CSR** for complex dashboards, interactive editors, or apps requiring shared state.
 
 > **Note**: KilatJS keeps these worlds separate. SSR pages are pure HTML (no React runtime), while CSR pages are full React apps. This gives you the speed of a static site with the power of a modern app.
+
+---
+
+## ⚡ Standalone API & Documentation
+
+KilatJS provides a dedicated core for building pure JSON APIs with automatic documentation.
+
+### Features
+
+1. **Automatic Swagger Documentation**: Use the `swagger` middleware to generate interactive documentation.
+2. **Typed Routes**: Use `RouteOptions` to provide metadata, request bodies, and response structures.
+3. **Core API**: Use the lightweight `KilatJS` core for JSON-first services.
+
+### Example
+
+```ts
+import KilatJS, { swagger, RouteContext } from "kilatjs/core";
+
+const app = new KilatJS();
+
+app.use(
+  swagger(app, {
+    path: "/docs",
+    title: "My API Documentation",
+  })
+);
+
+app.get(
+  "/api/users",
+  {
+    summary: "List users",
+    response: { users: [] },
+  },
+  (ctx) => {
+    return { users: ["Alice", "Bob"] };
+  }
+);
+
+app.listen(4000);
+```
 
 ---
 
