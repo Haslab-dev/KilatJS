@@ -3,31 +3,21 @@
         "target": "esnext",
         "module": "esnext",
         "moduleResolution": "node",
-        "types": [
-            "bun-types"
-        ],
+        "types": ["bun-types"],
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
         "strict": true,
         "skipLibCheck": true,
         "jsx": "react-jsx",
         "jsxImportSource": "react",
-        "declaration": true,
-        "outDir": "./dist",
-
-        "lib": [
-            "esnext",
-            "dom"
-        ],
-        "baseUrl": ".",
-        "rootDir": "src",
+        "baseUrl": "..",
         "paths": {
-            "kilatjs/core": ["./src/core/index.ts"],
-            "kilatjs": ["./src/index.ts"]
+            "kilatjs/core": ["./dist/core/index.d.ts"],
+            "kilatjs": ["./dist/index.d.ts"]
         }
     },
     "include": [
-        "src/**/*"
+        "**/*"
     ],
     "exclude": [
         "node_modules",

@@ -1,4 +1,4 @@
-import { RouteContext } from "../../../../src";
+import { RouteContext } from "../../../src";
 
 /**
  * Ultra-simple Hello World API endpoint for benchmarking

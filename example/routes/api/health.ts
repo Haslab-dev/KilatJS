@@ -1,4 +1,4 @@
-import { RouteContext } from "../../../../src";
+import { RouteContext } from "../../../src";
 
 /**
  * API Route: /api/health

@@ -1,6 +1,6 @@
 {
     "name": "kilatjs",
-    "version": "0.1.5",
+    "version": "0.1.6",
     "description": "A Bun-native, HTML-first framework that renders real pages, treats UI frameworks as renderers, and makes SEO the default.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -13,6 +13,11 @@
             "types": "./dist/index.d.ts",
             "import": "./dist/index.js",
             "require": "./dist/index.js"
+        },
+        "./core": {
+            "types": "./dist/core/index.d.ts",
+            "import": "./dist/core/index.js",
+            "require": "./dist/core/index.js"
         }
     },
     "files": [
@@ -22,7 +27,7 @@
     ],
     "scripts": {
         "build": "bun run build:lib && bun run build:types",
-        "build:lib": "bun build ./src/index.ts --outdir ./dist --external react --external react-dom --external fs --external path --external bun && bun build ./src/cli.ts --outdir ./dist --external react --external react-dom --external fs --external path --external bun",
+        "build:lib": "cd src && bun build index.ts cli.ts core/index.ts core/kilat.ts core/types.ts core/router.ts middleware/cors.ts middleware/jwt.ts middleware/swagger.ts --outdir ../dist --external react --external react-dom --external fs --external path --external bun",
         "build:types": "tsc --declaration --emitDeclarationOnly --outDir ./dist",
         "build:example": "cd example && bun run ../src/cli.ts build",
         "start": "cd example && bun run ../src/cli.ts dev --production",

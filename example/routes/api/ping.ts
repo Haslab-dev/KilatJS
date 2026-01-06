@@ -1,4 +1,4 @@
-import { RouteContext } from "../../../../src";
+import { RouteContext } from "../../../src";
 
 /**
  * Ultra-minimal ping endpoint - returns pre-compiled response
